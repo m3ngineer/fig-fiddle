@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import requests
 from bs4 import BeautifulSoup
+from sqlalchemy import create_engine
 
 import conf
 
@@ -106,50 +107,61 @@ instagram = InstagramScraper(urls[0])
 post_metrics = instagram.post_metrics()
 page_metrics = instagram.page_metrics()
 
-engine = create_engine(
-        "postgresql://{}:{}@{}/{}".format(
-            conf.RDS_user,
-            conf.RDS_password,
-            conf.RDS_endpoint,
-            conf.RDS_db_name,
+def connect_to_rds():
+    ''' Connects to RDS and returns connection '''
+    engine = create_engine(
+            "postgresql://{}:{}@{}/{}".format(
+                conf.RDS_user,
+                conf.RDS_password,
+                conf.RDS_host,
+                conf.RDS_db_name,
+                )
             )
-        )
+    conn = engine.connect()
+    return conn
 
-conn = engine.connect()
+def create_table(drop_table=False):
+    ''' Creates post_metric table in RDS database '''
+    conn = connect_to_rds()
 
-# create_table_sql  = """
-#                     CREATE TABLE post_metrics(
-#                     post_id VARCHAR (50) PRIMARY KEY,
-#                     post_time TIMESTAMP,
-#                     update_time TIMESTAMP,
-#                     post_likes INT,
-#                     post_comments INT,
-#                     post_media VARCHAR,
-#                     post_is_video BOOLEAN
-#                     );
-#                     """
+    if drop_table:
+        sql = 'DROP TABLE post_metrics;'
+        conn.execute(sql)
 
-# create_table_sql  = 'DROP TABLE post_metrics;'
+    # Create new table
+    sql  = """
+            CREATE TABLE post_metrics(
+            post_id VARCHAR (50) PRIMARY KEY,
+            post_time TIMESTAMP,
+            update_time TIMESTAMP,
+            post_likes INT,
+            post_comments INT,
+            post_media VARCHAR,
+            post_is_video BOOLEAN
+            );
+            """
+    conn.execute(sql)
+    print(conn)
+    conn.close()
 
-# conn.execute(create_table_sql)
+create_table(drop_table=True)
+conn = connect_to_rds()
 
-update_time = datetime.now().timestamp()
+update_time = datetime.now().isoformat()
 
-for m in post_metrics[:1]:
-    i_id = str(m['id'])
+for metric in post_metrics[:1]:
+    i_id = str(metric['id'])
     i_post_time = datetime.fromtimestamp(
-        m['taken_at_timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-    i_likes = int(m['edge_liked_by']['count'])
-    i_comments = int(m['edge_media_to_comment']['count'])
-    i_media = m['display_url']
-    i_video = bool(m['is_video'])
+        metric['taken_at_timestamp']).isoformat()
+    i_likes = int(metric['edge_liked_by']['count'])
+    i_comments = int(metric['edge_media_to_comment']['count'])
+    i_media = metric['display_url']
+    i_video = bool(metric['is_video'])
 
-    insert_sql = """INSERT INTO data
+    insert_sql = """INSERT INTO post_metrics
                     (post_id, post_time, update_time, post_likes, post_comments, post_media, post_is_video)
-                    VALUES ({}, {}, {}, {}, {}, {}, {})
+                    VALUES ({}, '{}', '{}', {}, {}, '{}', {})
                 """.format(i_id, i_post_time, update_time, i_likes, i_comments, i_media, i_video)
     conn.execute(insert_sql)
-
-    conn.commit()
 
 conn.close()
