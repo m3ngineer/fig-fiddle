@@ -61,7 +61,7 @@ class InstagramScraper:
                     if value and isinstance(value, dict):
                         value = value['count']
                         results[key] = value
-                    elif value:
+                    elif key in ['biography', 'id', 'username']:
                         results[key] = value
         return results
 
@@ -120,17 +120,28 @@ def connect_to_rds():
     conn = engine.connect()
     return conn
 
-def create_table(drop_table=False):
+def create_tables(drop_table=False):
     ''' Creates post_metric table in RDS database '''
     conn = connect_to_rds()
 
     if drop_table:
-        sql = 'DROP TABLE post_metrics;'
+        sql = 'DROP TABLE post_metrics, page_metrics;'
         conn.execute(sql)
 
     # Create new table
-    sql  = """
+    post_metrics_sql  = """
             CREATE TABLE post_metrics(
+            post_id VARCHAR (50) PRIMARY KEY,
+            post_time TIMESTAMP,
+            update_time TIMESTAMP,
+            post_likes INT,
+            post_comments INT,
+            post_media VARCHAR,
+            post_is_video BOOLEAN
+            );
+            """
+    page_metrics_sql  = """
+            CREATE TABLE page_metrics(
             post_id VARCHAR (50) PRIMARY KEY,
             post_time TIMESTAMP,
             update_time TIMESTAMP,
@@ -144,7 +155,7 @@ def create_table(drop_table=False):
     print(conn)
     conn.close()
 
-create_table(drop_table=True)
+create_tables(drop_table=True)
 conn = connect_to_rds()
 
 update_time = datetime.now().isoformat()
