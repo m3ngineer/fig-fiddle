@@ -125,10 +125,14 @@ def create_tables(drop_table=False):
     conn = connect_to_rds()
 
     if drop_table:
-        sql = 'DROP TABLE post_metrics, page_metrics;'
-        conn.execute(sql)
+        for table in ['post_metrics', 'page_metrics']:
+            try:
+                sql = 'DROP TABLE {};'.format(table)
+                conn.execute(sql)
+            except:
+                continue
 
-    # Create new table
+    # Create new tables
     post_metrics_sql  = """
             CREATE TABLE post_metrics(
             post_id VARCHAR (50) PRIMARY KEY,
@@ -142,16 +146,20 @@ def create_tables(drop_table=False):
             """
     page_metrics_sql  = """
             CREATE TABLE page_metrics(
-            post_id VARCHAR (50) PRIMARY KEY,
-            post_time TIMESTAMP,
+            user_id VARCHAR (50) PRIMARY KEY,
+            username VARCHAR (60),
             update_time TIMESTAMP,
-            post_likes INT,
-            post_comments INT,
-            post_media VARCHAR,
-            post_is_video BOOLEAN
+            biography TEXT,
+            video_timeline INT,
+            follows BIGINT,
+            followers BIGINT,
+            media_collections INT,
+            mutual_followed_by INT,
+            saved_media INT
             );
             """
-    conn.execute(sql)
+    conn.execute(post_metrics_sql)
+    conn.execute(page_metrics_sql)
     print(conn)
     conn.close()
 
@@ -160,6 +168,7 @@ conn = connect_to_rds()
 
 update_time = datetime.now().isoformat()
 
+# Add post metrics
 for metric in post_metrics[:1]:
     i_id = str(metric['id'])
     i_post_time = datetime.fromtimestamp(
@@ -174,5 +183,26 @@ for metric in post_metrics[:1]:
                     VALUES ({}, '{}', '{}', {}, {}, '{}', {})
                 """.format(i_id, i_post_time, update_time, i_likes, i_comments, i_media, i_video)
     conn.execute(insert_sql)
+
+# Add page metrics
+user_id = str(page_metrics['id'])
+username = page_metrics['username']
+update_time = datetime.now().isoformat()
+bio = page_metrics['biography']#.replace('\n', '')
+video_timeline = page_metrics['edge_felix_video_timeline']
+follows = page_metrics['edge_follow']
+followers = page_metrics['edge_followed_by']
+media_collections = page_metrics['edge_media_collections']
+mutual_followed_by = page_metrics['edge_mutual_followed_by']
+saved_media = page_metrics['edge_saved_media']
+
+
+insert_sql = """INSERT INTO page_metrics
+                (user_id, username, update_time, biography , video_timeline, follows, followers,
+                media_collections, mutual_followed_by, saved_media)
+                VALUES ({}, '{}', '{}', '{}', {}, {}, {}, {}, {}, {})
+            """.format(user_id, username, update_time, bio, video_timeline, follows, followers,
+                       media_collections, mutual_followed_by, saved_media)
+conn.execute(insert_sql)
 
 conn.close()
