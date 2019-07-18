@@ -2,85 +2,13 @@ from random import choice
 from datetime import datetime
 import json
 import requests
-from bs4 import BeautifulSoup
+
 from sqlalchemy import create_engine
 from random import randint
 from time import sleep
 
+from scraper import InstagramScraper
 import conf
-
-USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36']
-
-
-class InstagramScraper:
-
-    def __init__(self, url, user_agents=None, proxy=None):
-        self.url = url
-        self.user_agents = user_agents
-        self.proxy = proxy
-
-    def __random_agent(self):
-        if self.user_agents and isinstance(self.user_agents, list):
-            return choice(self.user_agents)
-        return choice(USER_AGENTS)
-
-    def __request_url(self, url):
-        try:
-            response = requests.get(
-                url,
-                headers={'User-Agent': self.__random_agent()},
-                proxies={'http': self.proxy, 'https': self.proxy})
-            response.raise_for_status()
-        except requests.HTTPError:
-            raise requests.HTTPError(
-                'Received non 200 status code from Instagram')
-        except requests.RequestException:
-            raise requests.RequestException
-        else:
-            return response.text
-
-    @staticmethod
-    def extract_json(html):
-        soup = BeautifulSoup(html, 'html.parser')
-        body = soup.find('body')
-        script_tag = body.find('script')
-        raw_string = script_tag.text.strip().replace(
-            'window._sharedData =', '').replace(';', '')
-        return json.loads(raw_string)
-
-    def page_metrics(self):
-        results = {}
-        try:
-            response = self.__request_url(self.url)
-            json_data = self.extract_json(response)
-            metrics = json_data['entry_data']['ProfilePage'][0]['graphql']['user']
-        except Exception as e:
-            raise e
-        else:
-            for key, value in metrics.items():
-                if key != 'edge_owner_to_timeline_media':
-                    if value and isinstance(value, dict):
-                        value = value['count']
-                        results[key] = value
-                    elif key in ['biography', 'id', 'username']:
-                        results[key] = value
-        return results
-
-    def post_metrics(self):
-        results = []
-        try:
-            response = self.__request_url(self.url)
-            json_data = self.extract_json(response)
-            metrics = json_data['entry_data']['ProfilePage'][0]['graphql']['user']['edge_owner_to_timeline_media']["edges"]
-        except Exception as e:
-            raise e
-        else:
-            for node in metrics:
-                node = node.get('node')
-                if node and isinstance(node, dict):
-                    results.append(node)
-        return results
 
 urls = [
     'https://www.instagram.com/urlocalplantboy/',
@@ -127,6 +55,7 @@ def create_tables(drop_table=False):
             try:
                 sql = 'DROP TABLE {};'.format(table)
                 conn.execute(sql)
+                print('table {} dropped'.format(table))
             except:
                 continue
 
@@ -134,14 +63,19 @@ def create_tables(drop_table=False):
     post_metrics_sql  = """
             CREATE TABLE post_metrics(
             post_id VARCHAR (50) PRIMARY KEY,
+            post_shortcode VARCHAR (50),
+            user_id VARCHAR (50),
             post_time TIMESTAMP,
             update_time TIMESTAMP,
             post_likes INT,
             post_comments INT,
             post_media VARCHAR,
-            post_is_video BOOLEAN
+            post_is_video BOOLEAN,
+            post_caption TEXT,
+            post_caption_accessibility TEXT
             );
             """
+
     page_metrics_sql  = """
             CREATE TABLE page_metrics(
             user_id VARCHAR (50) PRIMARY KEY,
@@ -157,8 +91,12 @@ def create_tables(drop_table=False):
             );
             """
     conn.execute(post_metrics_sql)
+    print('table created')
     conn.execute(page_metrics_sql)
     print(conn)
+
+    r = conn.execute('select * from post_metrics;')
+    print(r)
     conn.close()
 
 create_tables(drop_table=True)
@@ -181,19 +119,27 @@ def add_ig_data_from_urls(urls):
 
         # Add post metrics
         update_time = datetime.now().isoformat()
-        for metric in post_metrics[:1]:
+        for metric in post_metrics:
             i_id = str(metric['id'])
+            i_shortcode = metric['shortcode']
+            i_user_id = str(metric['owner']['id'])
             i_post_time = datetime.fromtimestamp(
                 metric['taken_at_timestamp']).isoformat()
             i_likes = int(metric['edge_liked_by']['count'])
             i_comments = int(metric['edge_media_to_comment']['count'])
             i_media = metric['display_url']
             i_video = bool(metric['is_video'])
+            i_caption = metric['edge_media_to_caption']['edges'][0]['node']['text']
+            i_accessibility_caption = metric['accessibility_caption']
 
             insert_sql = """INSERT INTO post_metrics
-                            (post_id, post_time, update_time, post_likes, post_comments, post_media, post_is_video)
-                            VALUES ({}, '{}', '{}', {}, {}, '{}', {})
-                        """.format(i_id, i_post_time, update_time, i_likes, i_comments, i_media, i_video)
+                    (post_id, post_shortcode, user_id, post_time, update_time,
+                    post_likes, post_comments, post_media, post_is_video,
+                    post_caption, post_caption_accessibility)
+                    VALUES ({}, {}, {}, '{}', '{}', {}, {}, '{}', {}, $${}$$, '{}')
+                """.format(i_id, i_shortcode, i_user_id, i_post_time,
+                            update_time, i_likes, i_comments, i_media, i_video,
+                            i_caption, i_accessibility_caption)
             conn.execute(insert_sql)
 
         # Add page metrics
@@ -212,7 +158,7 @@ def add_ig_data_from_urls(urls):
         insert_sql = """INSERT INTO page_metrics
                         (user_id, username, update_time, biography , video_timeline, follows, followers,
                         media_collections, mutual_followed_by, saved_media)
-                        VALUES ({}, '{}', '{}', '{}', {}, {}, {}, {}, {}, {})
+                        VALUES ({}, '{}', '{}', $${}$$, {}, {}, {}, {}, {}, {})
                     """.format(user_id, username, update_time, bio, video_timeline, follows, followers,
                                media_collections, mutual_followed_by, saved_media)
         conn.execute(insert_sql)
