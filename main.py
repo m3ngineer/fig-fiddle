@@ -136,7 +136,7 @@ def add_ig_data_from_urls(urls):
                     (post_id, post_shortcode, user_id, post_time, update_time,
                     post_likes, post_comments, post_media, post_is_video,
                     post_caption, post_caption_accessibility)
-                    VALUES ({}, {}, {}, '{}', '{}', {}, {}, '{}', {}, $${}$$, '{}')
+                    VALUES ({}, '{}', {}, '{}', '{}', {}, {}, '{}', {}, $${}$$, '{}')
                 """.format(i_id, i_shortcode, i_user_id, i_post_time,
                             update_time, i_likes, i_comments, i_media, i_video,
                             i_caption, i_accessibility_caption)
