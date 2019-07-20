@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 import requests
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from random import randint
 from time import sleep
 
@@ -72,7 +72,8 @@ def create_tables(drop_table=False):
             post_media VARCHAR,
             post_is_video BOOLEAN,
             post_caption TEXT,
-            post_caption_accessibility TEXT
+            post_caption_accessibility TEXT,
+            post_url VARCHAR
             );
             """
 
@@ -129,18 +130,24 @@ def add_ig_data_from_urls(urls):
             i_comments = int(metric['edge_media_to_comment']['count'])
             i_media = metric['display_url']
             i_video = bool(metric['is_video'])
-            i_caption = metric['edge_media_to_caption']['edges'][0]['node']['text']
-            i_accessibility_caption = metric['accessibility_caption']
+            i_caption = (metric['edge_media_to_caption']['edges'][0]['node']['text']).replace(':', 'colon')
+            # i_caption = ''
+            try:
+                i_accessibility_caption = metric['accessibility_caption']
+            except:
+                i_accessibility_caption = ''
+            i_post_url = 'https:/www.instagram.com/p/{}'.format(i_shortcode)
 
             insert_sql = """INSERT INTO post_metrics
                     (post_id, post_shortcode, user_id, post_time, update_time,
                     post_likes, post_comments, post_media, post_is_video,
-                    post_caption, post_caption_accessibility)
-                    VALUES ({}, '{}', {}, '{}', '{}', {}, {}, '{}', {}, $${}$$, '{}')
+                    post_caption, post_caption_accessibility, post_url)
+                    VALUES ({}, '{}', {}, '{}', '{}', {}, {}, '{}', {}, $${}$$, '{}', '{}')
                 """.format(i_id, i_shortcode, i_user_id, i_post_time,
                             update_time, i_likes, i_comments, i_media, i_video,
-                            i_caption, i_accessibility_caption)
-            conn.execute(insert_sql)
+                            i_caption, i_accessibility_caption, i_post_url)
+            print(insert_sql)
+            conn.execute(text(insert_sql))
 
         # Add page metrics
         user_id = str(page_metrics['id'])
@@ -155,13 +162,13 @@ def add_ig_data_from_urls(urls):
         saved_media = page_metrics['edge_saved_media']
 
 
-        insert_sql = """INSERT INTO page_metrics
+        insert_sql_page = """INSERT INTO page_metrics
                         (user_id, username, update_time, biography , video_timeline, follows, followers,
                         media_collections, mutual_followed_by, saved_media)
                         VALUES ({}, '{}', '{}', $${}$$, {}, {}, {}, {}, {}, {})
                     """.format(user_id, username, update_time, bio, video_timeline, follows, followers,
                                media_collections, mutual_followed_by, saved_media)
-        conn.execute(insert_sql)
+        conn.execute(text(insert_sql_page))
 
     conn.close()
 
