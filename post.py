@@ -1,6 +1,14 @@
 import random
 from db import connect_to_rds
 
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from time import sleep, strftime
+from random import randint
+import pandas as pd
+
+import conf
+
 def create_post():
     '''
     Create a post and post to instagram
@@ -84,3 +92,24 @@ def generate_caption(profile_data):
     caption.append(hashtags)
 
     return caption
+
+def login():
+    chromedriver_path = '/Users/mattheweng/bin/chromedriver' # Change this to your own chromedriver path!
+    driver = webdriver.Chrome(executable_path=chromedriver_path)
+    sleep(2)
+    driver.get('https://www.instagram.com/accounts/login/?source=auth_switcher')
+    sleep(3)
+
+    username = driver.find_element_by_name('username')
+    username.send_keys(conf.insta_handle)
+    password = driver.find_element_by_name('password')
+    password.send_keys(conf.insta_password)
+
+    button_login = driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/article/div/div[1]/div/form/div[4]/button/div')
+    button_login.click()
+    sleep(3)
+
+    notnow = driver.find_element_by_xpath('/html/body/div[3]/div/div/div[3]/button[2]')
+    notnow.click() #comment these last 2 lines out, if you don't get a pop up asking about notifications
+
+login()
