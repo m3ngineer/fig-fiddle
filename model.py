@@ -39,11 +39,12 @@ def predict_labels(data, model=None):
         model = pickle.load(open(filename, 'rb'))
 
     data['labels_predict'] = model.predict(data)
-    data.to_csv('data/posts_predicted.csv', index=False)
+    data.to_csv('data/posts_predicted.csv', index=True)
     return data
 
 if __name__ == "__main__":
     data = pd.read_excel('data/posts-labeled2.xlsx')
+    data.set_index('post_id', inplace=True)
     model = train(data)
     save_model(model)
 
