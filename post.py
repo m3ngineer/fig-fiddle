@@ -19,7 +19,7 @@ def create_post():
 
     # Select a post from database
     post = select_post()
-    print(post)
+
     # Save media from post
     img_path = 'images/image.jpg'
     img_url = post['post_media']
@@ -35,12 +35,14 @@ def create_post():
     print('logging into instagram...')
     instaAPI.login()
     sleep(5)
-    print('uploading photo...')
-    print(caption)
-    instaAPI.uploadPhoto(img_path, caption='testing')
+    print('creating post...')
+    instaAPI.uploadPhoto(img_path, caption=caption)
+    print('post uploaded')
 
     # Update post flag
-    # update_post_flag(rand_post_i)
+    post_id = post['post_id']
+    update_post_flag(post_id)
+    print('database updated.')
 
 def select_post():
     '''
@@ -63,7 +65,7 @@ def select_post():
 
     return post
 
-def update_post_flag(post_index):
+def update_post_flag(post_id):
     '''
     Update post.post_flag in database to 1
     '''
@@ -71,8 +73,8 @@ def update_post_flag(post_index):
     query = """
         UPDATE post_metrics
         SET posted_flag = 1
-        WHERE post_index = {}
-        """.format(post_index)
+        WHERE post_id = {}
+        """.format(post_id)
 
     conn.execute(query)
     conn.close()
@@ -86,13 +88,18 @@ def generate_caption(profile_data):
         filename = 'captions.txt'
         with open(filename, 'r') as fh:
             all_lines = fh.readlines()
-            return random.choice(all_lines)
+            line = random.choice(all_lines)
+            line = (lambda line: line[:-1] if line[-1:] == '\n' else line)(line) # strip out ending newline char
+            return line
 
     def generate_hashtags():
         filename = 'hashes.txt'
         with open(filename, 'r') as fh:
             all_lines = fh.readlines()
-            return random.choice(all_lines)
+            hashtag_list = random.sample(all_lines, 5)
+            hashtag_list = [hashtag[:-1] if hashtag[-1:] == '\n' else hashtag for hashtag in hashtag_list]
+            hashtags = ' '.join(hashtag_list)
+            return hashtags
 
     caption = []
 
@@ -101,13 +108,14 @@ def generate_caption(profile_data):
     caption.append(tagline)
 
     # Add credits
-    caption.append('Credits: {}'.format(profile_data))
+    username = '@' + profile_data['username']
+    caption.append('Credits: {}'.format(username))
 
     # Add hashtags
     hashtags = generate_hashtags()
     caption.append(hashtags)
 
-    return caption
+    return '\n.\n.\n.\n'.join(caption)
 
 def start_driver():
     chromedriver_path = '/Users/mattheweng/bin/chromedriver' # Change this to your own chromedriver path!
