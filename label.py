@@ -8,27 +8,14 @@ from random import randint
 from time import sleep
 import pandas as pd
 
+from db import connect_to_rds
 import conf
-
-def connect_to_rds():
-    ''' Connects to RDS and returns connection '''
-    engine = create_engine(
-            "postgresql://{}:{}@{}/{}".format(
-                conf.RDS_user,
-                conf.RDS_password,
-                conf.RDS_host,
-                conf.RDS_db_name,
-                )
-            )
-    # conn = engine.connect()
-    # return conn
-    return engine
 
 def get_unlabeled_data_csv(filepath):
     '''
     Export Instagram posts into CSV for labelling
     '''
-    engine = connect_to_rds()
+    engine = connect_to_rds(return_engine=True)
 
     query = """
     SELECT * from post_metrics post
@@ -50,7 +37,6 @@ def get_unlabeled_data_csv(filepath):
     df['days_since_post_date'] = df.apply(lambda row: days_since_posted(row), axis=1)
     df['ratio_comments_days_posted'] = df['post_comments'] / df['days_since_post_date']
     df['ratio_likes_days_posted'] = df['post_likes'] / df['days_since_post_date']
-
     df['good_post'] = 0
     df['flag'] = flag_posts(df)
     df.to_csv(filepath, index=False)
@@ -67,4 +53,32 @@ def flag_posts(df):
 
     return df['flag'].astype(int)
 
-get_unlabeled_data_csv('data/posts-unlabeled.csv')
+def update_rds_labels_by_csv(filepath):
+
+    read.csv()
+    pass
+
+# get_unlabeled_data_csv('data/posts-unlabeled.csv')
+
+engine = connect_to_rds(return_engine=True)
+q = """ALTER TABLE post_metrics
+ADD flag int;"""
+
+# Upload csv into RDS
+# labels = pd.read_csv('data/posts_predicted.csv')
+# labels.to_sql(con=engine, name='labels_predict', if_exists='replace')
+
+# Update post_metrics table
+q = """
+    UPDATE post_metrics
+    SET    good_post = CAST(labels_predict.labels_predict AS int)
+    FROM labels_predict
+    WHERE CAST(post_metrics.post_id AS bigint) = CAST(labels_predict.post_id AS bigint)
+    """
+conn = connect_to_rds()
+conn.execute(q)
+
+q = """select post_id from post_metrics"""
+r = conn.execute(q)
+print(r.keys())
+print(r.fetchall())
