@@ -37,48 +37,22 @@ def get_unlabeled_data_csv(filepath):
     df['days_since_post_date'] = df.apply(lambda row: days_since_posted(row), axis=1)
     df['ratio_comments_days_posted'] = df['post_comments'] / df['days_since_post_date']
     df['ratio_likes_days_posted'] = df['post_likes'] / df['days_since_post_date']
-    df['good_post'] = 0
-    df['flag'] = flag_posts(df)
+    df['post_label_man'] = -1
+    df['post_unuseable_flag'] = flag_posts(df)
     df.to_csv(filepath, index=False)
 
     return df
 
 def flag_posts(df):
 
-    df['flag'] = 0
+    df['post_unuseable_flag'] = 0
 
     # Check for ads
     flagged_phrases = ['link in bio', 'buy now', 'limited time', '#ad']
-    df['flag'] = df['post_caption'].apply(lambda row: any([True if phrase in row else False for phrase in flagged_phrases]))
+    df['post_unuseable_flag'] = df['post_caption'].apply(lambda row: any([True if phrase in row else False for phrase in flagged_phrases]))
 
-    return df['flag'].astype(int)
+    return df['post_unuseable_flag'].astype(int)
 
-def update_rds_labels_by_csv(filepath):
 
-    read.csv()
-    pass
 
-# get_unlabeled_data_csv('data/posts-unlabeled.csv')
-
-engine = connect_to_rds(return_engine=True)
-q = """ALTER TABLE post_metrics
-ADD flag int;"""
-
-# Upload csv into RDS
-# labels = pd.read_csv('data/posts_predicted.csv')
-# labels.to_sql(con=engine, name='labels_predict', if_exists='replace')
-
-# Update post_metrics table
-q = """
-    UPDATE post_metrics
-    SET    good_post = CAST(labels_predict.labels_predict AS int)
-    FROM labels_predict
-    WHERE CAST(post_metrics.post_id AS bigint) = CAST(labels_predict.post_id AS bigint)
-    """
-conn = connect_to_rds()
-conn.execute(q)
-
-q = """select post_id from post_metrics"""
-r = conn.execute(q)
-print(r.keys())
-print(r.fetchall())
+get_unlabeled_data_csv('data/posts-unlabeled.csv')
