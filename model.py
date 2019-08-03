@@ -56,7 +56,8 @@ def update_rds_labels_by_csv(labels):
     # Update post_metrics table with predicted labels
     q = """
         UPDATE post_metrics
-        SET post_label_predict = CAST(post_label_predictions.post_label_predict AS int)
+        SET post_label_predict = CAST(post_label_predictions.post_label_predict AS int),
+            post_unuseable_flag = CAST(post_label_predictions.post_unuseable_flag AS int)
         FROM post_label_predictions
         WHERE CAST(post_metrics.post_id AS bigint) = CAST(post_label_predictions.post_id AS bigint)
         """
