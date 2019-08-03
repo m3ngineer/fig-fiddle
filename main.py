@@ -62,7 +62,7 @@ def create_tables(drop_table=False):
     # Create new tables
     post_metrics_sql  = """
             CREATE TABLE post_metrics(
-            post_id VARCHAR (50) PRIMARY KEY,
+            post_id bigint PRIMARY KEY,
             post_shortcode VARCHAR (50),
             user_id VARCHAR (50),
             post_time TIMESTAMP,
@@ -73,7 +73,11 @@ def create_tables(drop_table=False):
             post_is_video BOOLEAN,
             post_caption TEXT,
             post_caption_accessibility TEXT,
-            post_url VARCHAR
+            post_url VARCHAR,
+            post_label_man INT,
+            post_label_predict INT,
+            post_unuseable_flag INT,
+            posted_flag INT,
             );
             """
 
@@ -141,11 +145,11 @@ def add_ig_data_from_urls(urls):
             insert_sql = """INSERT INTO post_metrics
                     (post_id, post_shortcode, user_id, post_time, update_time,
                     post_likes, post_comments, post_media, post_is_video,
-                    post_caption, post_caption_accessibility, post_url)
-                    VALUES ({}, '{}', {}, '{}', '{}', {}, {}, '{}', {}, $${}$$, '{}', '{}')
+                    post_caption, post_caption_accessibility, post_url, post_label_man, post_label_predict, post_unuseable_flag, posted_flag)
+                    VALUES ({}, '{}', {}, '{}', '{}', {}, {}, '{}', {}, $${}$$, '{}', '{}', {}, {}, {}, {})
                 """.format(i_id, i_shortcode, i_user_id, i_post_time,
                             update_time, i_likes, i_comments, i_media, i_video,
-                            i_caption, i_accessibility_caption, i_post_url)
+                            i_caption, i_accessibility_caption, i_post_url, -1, -1, 0, 0)
             print(insert_sql)
             conn.execute(text(insert_sql))
 
