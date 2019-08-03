@@ -43,9 +43,9 @@ def predict_labels(data, index='post_id', features=None, model=None):
         model = pickle.load(open(filename, 'rb'))
 
     data['post_label_predict'] = model.predict(data[features])
-    data[['post_id','post_label_predict']].to_csv('data/posts_predicted.csv', index=False)
+    data[['post_id','post_label_predict', 'post_unuseable_flag']].to_csv('data/posts_predicted.csv', index=False)
 
-    return data[['post_id','post_label_predict']]
+    return data[['post_id','post_label_predict', 'post_unuseable_flag']]
 
 def update_rds_labels_by_csv(labels):
 
@@ -56,7 +56,7 @@ def update_rds_labels_by_csv(labels):
     # Update post_metrics table with predicted labels
     q = """
         UPDATE post_metrics
-        SET    post_label_predict = CAST(post_label_predictions.post_label_predict AS int)
+        SET post_label_predict = CAST(post_label_predictions.post_label_predict AS int)
         FROM post_label_predictions
         WHERE CAST(post_metrics.post_id AS bigint) = CAST(post_label_predictions.post_id AS bigint)
         """
