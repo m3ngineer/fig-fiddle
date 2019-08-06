@@ -9,6 +9,7 @@ from time import sleep
 import pandas as pd
 
 from db import connect_to_rds
+from model import predict_labels, update_rds_labels_by_csv
 import conf
 
 def get_unlabeled_data_csv(filepath):
@@ -26,6 +27,14 @@ def get_unlabeled_data_csv(filepath):
     # execute the query and assign it to a pandas dataframe
     df = pd.read_sql_query(query, engine)
 
+    # Create new features
+    df = create_features(df)
+
+    df.to_csv(filepath, index=False)
+
+    return df
+
+def preprocess(df):
     # Feature engineering
     def days_since_posted(row):
         return (datetime.now() - datetime.strptime(str(row['post_time']), '%Y-%m-%d %H:%M:%S')).days
@@ -39,7 +48,6 @@ def get_unlabeled_data_csv(filepath):
     df['ratio_likes_days_posted'] = df['post_likes'] / df['days_since_post_date']
     df['post_label_man'] = -1
     df['post_unuseable_flag'] = flag_posts(df)
-    df.to_csv(filepath, index=False)
 
     return df
 
@@ -53,6 +61,33 @@ def flag_posts(df):
 
     return df['post_unuseable_flag'].astype(int)
 
+def assign_labels():
+    '''
+    Assign labels to any posts that have not been predicted
+    '''
+
+    conn = connect_to_rds()
+    query = """
+        SELECT * from post_metrics post
+            JOIN page_metrics page
+                ON page.user_id=post.user_id
+            WHERE post_label_predict=-1;
+    """
+    result = conn.execute(query)
+
+    # Preprocess new post data and make predictions
+    data = pd.DataFrame(result.fetchall(), columns=r.keys())
+    data = preprocess(data)
+    labels = predict_labels(data)
+    update_rds_labels_by_csv(labels)
+
+    conn.close()
+
+    return
+
+def update_label(post_id, label):
+    ''' Reassign the label of a post '''
+    return
 
 
 get_unlabeled_data_csv('data/posts-unlabeled.csv')
