@@ -44,8 +44,11 @@ def preprocess(df):
     df['num_@'] = df['post_caption'].str.count('@')
     df['caption_length'] = df['post_caption'].str.len()
     df['days_since_post_date'] = df.apply(lambda row: days_since_posted(row), axis=1)
+    df.loc[df['days_since_post_date'] == 0, 'days_since_post_date'] = 0.1 # Replace with 0.1 to prevent infinity
     df['ratio_comments_days_posted'] = df['post_comments'] / df['days_since_post_date']
     df['ratio_likes_days_posted'] = df['post_likes'] / df['days_since_post_date']
+    # If 0 comments and 0 days since posting:
+    df[['ratio_comments_days_posted', 'ratio_likes_days_posted']].fillna(1, inplace=True)
     df['post_label_man'] = -1
     df['post_unuseable_flag'] = flag_posts(df)
 
@@ -76,8 +79,9 @@ def assign_labels():
     result = conn.execute(query)
 
     # Preprocess new post data and make predictions
-    data = pd.DataFrame(result.fetchall(), columns=r.keys())
+    data = pd.DataFrame(result.fetchall(), columns=result.keys())
     data = preprocess(data)
+    print(data[['post_likes', 'post_comments', 'days_since_post_date', 'ratio_comments_days_posted', 'ratio_likes_days_posted']])
     labels = predict_labels(data)
     update_rds_labels_by_csv(labels)
 
@@ -85,9 +89,18 @@ def assign_labels():
 
     return
 
-def update_label(post_id, label):
+def update_label(post_id, label, column='post_label_predict'):
     ''' Reassign the label of a post '''
-    return
 
+    conn = connect_to_rds()
+    query = """
+        UPDATE post_metrics
+        SET {} = {},
+        WHERE post_id = {}
+        """.format(column, label, post_id)
+    conn.execute(query)
+    conn.close()
+    print("{} column updated for post_id {}.".format(column, post_id))
 
-get_unlabeled_data_csv('data/posts-unlabeled.csv')
+# get_unlabeled_data_csv('data/posts-unlabeled.csv')
+assign_labels()
