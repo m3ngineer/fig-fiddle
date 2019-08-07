@@ -12,25 +12,34 @@ from db import connect_to_rds
 import conf
 
 urls = [
-    'https://www.instagram.com/urlocalplantboy/',
-    'https://www.instagram.com/bloomstarofficial/',
-    'https://www.instagram.com/houseofplantlovers/',
-    'https://www.instagram.com/patchplants/',
-    'https://www.instagram.com/planterpotters/',
-    'https://www.instagram.com/craigowilliams/',
-    'https://www.instagram.com/plantloversdecor/',
-    'https://www.instagram.com/momagency/',
-    'https://www.instagram.com/plantuniversity/',
-    'https://www.instagram.com/plantloversonly/',
-    'https://www.instagram.com/darkplantmatter/',
-    'https://www.instagram.com/lostinplantopia/',
-    'https://www.instagram.com/plantsbybenny/',
-    'https://www.instagram.com/thepottedjungle/',
-    'https://www.instagram.com/workhardplanthard/',
-    'https://www.instagram.com/houseplantclub/',
-    'https://www.instagram.com/thesill/',
-    'https://www.instagram.com/iplanteven/',
-    'https://www.instagram.com/urbanjungleblog/',
+    'https://www.instagram.com/plantaddictsanon/',
+    # 'https://www.instagram.com/plantismus/',
+    # 'https://www.instagram.com/plantkween/',
+    # 'https://www.instagram.com/welcometothejunglehome/',
+    # 'https://www.instagram.com/houseplantdiary/',
+    # 'https://www.instagram.com/emeraldcityplants/',
+    # 'https://www.instagram.com/houseofplantlovers/',
+    # 'https://www.instagram.com/botanistbyheart/',
+    # 'https://www.instagram.com/houseplantopia/',
+    # 'https://www.instagram.com/urlocalplantboy/',
+    # 'https://www.instagram.com/bloomstarofficial/',
+    # 'https://www.instagram.com/houseofplantlovers/',
+    # 'https://www.instagram.com/patchplants/',
+    # 'https://www.instagram.com/planterpotters/',
+    # 'https://www.instagram.com/craigowilliams/',
+    # 'https://www.instagram.com/plantloversdecor/',
+    # 'https://www.instagram.com/momagency/',
+    # 'https://www.instagram.com/plantuniversity/',
+    # 'https://www.instagram.com/plantloversonly/',
+    # 'https://www.instagram.com/darkplantmatter/',
+    # 'https://www.instagram.com/lostinplantopia/',
+    # 'https://www.instagram.com/plantsbybenny/',
+    # 'https://www.instagram.com/thepottedjungle/',
+    # 'https://www.instagram.com/workhardplanthard/',
+    # 'https://www.instagram.com/houseplantclub/',
+    # 'https://www.instagram.com/thesill/',
+    # 'https://www.instagram.com/iplanteven/',
+    # 'https://www.instagram.com/urbanjungleblog/',
     'https://www.instagram.com/hiltoncarter/',
 ]
 
@@ -48,6 +57,9 @@ def add_ig_data_from_urls(urls):
         post_metrics = instagram.post_metrics()
         page_metrics = instagram.page_metrics()
 
+        insert_post_metric_data(post_metrics)
+        insert_page_metric_data(page_metrics)
+
 def insert_post_metric_data(post_metrics):
     ''' Insert data from url into post_metrics table '''
 
@@ -59,11 +71,10 @@ def insert_post_metric_data(post_metrics):
         i_id = str(metric['id'])
 
         # Check if post already exists in table
-        query = "SELECT post_id FROM post_metrics if post_id='{}'".format(i_id)
+        query = "SELECT post_id FROM post_metrics WHERE post_id='{}'".format(i_id)
         query_post_id = conn.execute(query)
 
         if not query_post_id.fetchall(): # If ID not found
-
             # Assign variables
             i_shortcode = metric['shortcode']
             i_user_id = str(metric['owner']['id'])
@@ -91,6 +102,8 @@ def insert_post_metric_data(post_metrics):
                                 update_time, i_likes, i_comments, i_media, i_video,
                                 i_caption, i_accessibility_caption, i_post_url, -1, -1, 0, 0)
                 conn.execute(text(insert_sql))
+                print('Post {} inserted into post_metrics'.format(i_id))
+
             except Exception as e:
                 print('Unable to insert post {}: {}'.format(post_id, e))
                 continue
@@ -104,7 +117,7 @@ def insert_page_metric_data(page_metrics):
 
     conn = connect_to_rds()
     # Check if user_id already exists
-    query = "SELECT username FROM page_metrics if user_id='{}'".format(user_id)
+    query = "SELECT username FROM page_metrics WHERE user_id='{}'".format(user_id)
     query_user_id = conn.execute(query)
 
     if not query_user_id.fetchall(): # If ID not found
@@ -129,6 +142,8 @@ def insert_page_metric_data(page_metrics):
 
         try:
             conn.execute(text(insert_sql_page))
+            print('User {} inserted into post_metrics'.format(user_id))
+
         except Exception as e:
             raise
     conn.close()
