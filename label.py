@@ -2,7 +2,6 @@ from random import choice
 from datetime import datetime
 import json
 import requests
-from bs4 import BeautifulSoup
 from sqlalchemy import create_engine
 from random import randint
 from time import sleep
