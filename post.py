@@ -10,6 +10,12 @@ import requests
 
 import conf
 
+def lambda_handler(context, event):
+
+    create_post()
+
+    return 'Posted to Instagram successfully'
+
 def create_post():
     '''
     Create a post object and post to instagram
@@ -19,7 +25,7 @@ def create_post():
     post = select_post()
 
     # Save media from post
-    img_path = 'images/image.jpg'
+    img_path = '/tmp/image.jpg'
     img_url = post['post_media']
     img_data = requests.get(img_url).content
     with open(img_path, 'wb') as handler:
