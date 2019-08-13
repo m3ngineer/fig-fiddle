@@ -94,7 +94,7 @@ def generate_caption(profile_data):
         filename = 'hashes.txt'
         with open(filename, 'r') as fh:
             all_lines = fh.readlines()
-            hashtag_list = random.sample(all_lines, 5)
+            hashtag_list = random.sample(all_lines, 10)
             hashtag_list = [hashtag[:-1] if hashtag[-1:] == '\n' else hashtag for hashtag in hashtag_list]
             hashtags = ' '.join(hashtag_list)
             return hashtags
