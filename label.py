@@ -27,7 +27,7 @@ def get_unlabeled_data_csv(filepath):
     df = pd.read_sql_query(query, engine)
 
     # Create new features
-    df = create_features(df)
+    df = preprocess(df)
 
     df.to_csv(filepath, index=False)
 
@@ -101,5 +101,6 @@ def update_label(post_id, label, column='post_label_predict'):
     conn.close()
     print("{} column updated for post_id {}.".format(column, post_id))
 
-# get_unlabeled_data_csv('data/posts-unlabeled.csv')
-assign_labels()
+get_unlabeled_data_csv('data/posts-unlabeled-190923.csv')
+# assign_labels()
+#
